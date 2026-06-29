@@ -5,76 +5,72 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Guitar → Piano</title>
 <style>
-  * { margin: 0; padding: 0; box-sizing: border-box; }
+  * { margin:0; padding:0; box-sizing:border-box; }
   body {
-    min-height: 100vh;
-    background: #0d0d0f;
-    color: #e8e8e8;
-    font-family: Georgia, serif;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    padding: 32px 16px;
+    min-height:100vh; background:#0d0d0f; color:#e8e8e8;
+    font-family:Georgia,serif; display:flex; flex-direction:column;
+    align-items:center; padding:28px 16px;
   }
-  .label { font-size: 11px; letter-spacing: 0.3em; color: #666; text-transform: uppercase; margin-bottom: 8px; }
+  .label { font-size:11px; letter-spacing:0.3em; color:#666; text-transform:uppercase; margin-bottom:8px; }
   h1 {
-    font-size: clamp(28px, 7vw, 52px);
-    font-weight: 400;
-    background: linear-gradient(135deg, #e8e8e8, #8888cc);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    margin-bottom: 4px;
+    font-size:clamp(26px,6vw,48px); font-weight:400;
+    background:linear-gradient(135deg,#e8e8e8,#8888cc);
+    -webkit-background-clip:text; -webkit-text-fill-color:transparent; margin-bottom:4px;
   }
-  .sub { color: #555; font-style: italic; font-size: 13px; margin-bottom: 24px; }
-  #noteCircle {
-    width: 180px; height: 180px;
-    border-radius: 50%;
-    border: 3px solid #222;
-    display: flex; flex-direction: column;
-    align-items: center; justify-content: center;
-    margin-bottom: 24px;
-    transition: border-color 0.06s, box-shadow 0.06s, background 0.06s;
-    background: #111113;
+  .sub { color:#555; font-style:italic; font-size:13px; margin-bottom:20px; }
+
+  /* Chord display */
+  #chordBox {
+    display:flex; gap:10px; justify-content:center; flex-wrap:wrap;
+    min-height:80px; align-items:center; margin-bottom:16px;
+    width:100%; max-width:340px;
   }
-  #noteName { font-size: 52px; font-weight: 300; line-height: 1; color: #555; transition: color 0.06s; }
-  #noteOctave { font-size: 20px; color: #444; margin-top: 2px; }
-  #noteFreq { font-size: 11px; color: #333; margin-top: 4px; }
-  #rmsBar {
-    width: 180px; height: 4px; background: #1a1a1e;
-    border-radius: 2px; margin-bottom: 20px; overflow: hidden;
+  .noteChip {
+    width:64px; height:64px; border-radius:50%;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    border:2px solid #333; background:#111113;
+    transition:all 0.08s;
+    font-size:22px; font-weight:300;
   }
-  #rmsFill { height: 100%; background: #60a0d0; width: 0%; transition: width 0.05s; }
+  .noteChip .oct { font-size:11px; color:#666; margin-top:1px; }
+
+  /* RMS bar */
+  #rmsBar { width:200px; height:3px; background:#1a1a1e; border-radius:2px; margin-bottom:16px; overflow:hidden; }
+  #rmsFill { height:100%; background:#60a0d0; width:0%; transition:width 0.05s; }
+
   #startBtn {
-    padding: 13px 38px; border-radius: 40px;
-    border: 1px solid #334455; background: #0e1a22;
-    color: #60a0d0; font-size: 13px; letter-spacing: 0.1em;
-    cursor: pointer; text-transform: uppercase;
-    margin-bottom: 24px; transition: all 0.2s;
+    padding:12px 36px; border-radius:40px;
+    border:1px solid #334455; background:#0e1a22;
+    color:#60a0d0; font-size:13px; letter-spacing:0.1em;
+    cursor:pointer; text-transform:uppercase; margin-bottom:20px;
   }
-  #startBtn.active { border-color: #553333; background: #1a0e0e; color: #e06060; }
+  #startBtn.active { border-color:#553333; background:#1a0e0e; color:#e06060; }
   .card {
-    background: #111113; border: 1px solid #1e1e22;
-    border-radius: 14px; padding: 20px 24px;
-    width: 100%; max-width: 340px; margin-bottom: 16px;
+    background:#111113; border:1px solid #1e1e22; border-radius:14px;
+    padding:18px 22px; width:100%; max-width:340px; margin-bottom:14px;
   }
-  .row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
-  .row:last-child { margin-bottom: 0; }
-  .clabel { font-size: 11px; color: #666; letter-spacing: 0.05em; }
-  .cval { font-size: 12px; color: #60a0d0; }
-  .cval.green { color: #60d090; }
-  .cval.red { color: #e06060; }
-  input[type=range] { width: 100%; accent-color: #60a0d0; margin-top: 5px; margin-bottom: 8px; }
-  #history { display: flex; flex-wrap: wrap; gap: 7px; justify-content: center; max-width: 340px; margin-bottom: 16px; }
-  .htag { padding: 4px 12px; border-radius: 20px; background: #111113; border: 1px solid #1e1e22; font-size: 13px; }
-  .tips { background: #0e0e10; border: 1px solid #1a1a1e; border-radius: 12px; padding: 16px 18px; max-width: 340px; width: 100%; }
-  .tips ul { padding-left: 16px; font-size: 12px; color: #555; line-height: 1.9; }
+  .row { display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; }
+  .clabel { font-size:11px; color:#666; letter-spacing:0.05em; }
+  .cval { font-size:12px; color:#60a0d0; }
+  .cval.green { color:#60d090; } .cval.red { color:#e06060; }
+  input[type=range] { width:100%; accent-color:#60a0d0; margin-top:4px; margin-bottom:6px; }
+  #history { display:flex; flex-wrap:wrap; gap:6px; justify-content:center; max-width:340px; margin-bottom:14px; }
+  .htag { padding:3px 10px; border-radius:20px; background:#111113; border:1px solid #1e1e22; font-size:12px; }
+  .tips { background:#0e0e10; border:1px solid #1a1a1e; border-radius:12px; padding:14px 18px; max-width:340px; width:100%; }
+  .tips ul { padding-left:16px; font-size:12px; color:#555; line-height:1.9; }
   #loading {
-    position: fixed; inset: 0; background: #0d0d0f;
-    display: flex; flex-direction: column;
-    align-items: center; justify-content: center; z-index: 100;
+    position:fixed; inset:0; background:#0d0d0f;
+    display:flex; flex-direction:column; align-items:center; justify-content:center; z-index:100;
   }
-  #loadBar { width: 200px; height: 3px; background: #1e1e22; border-radius: 2px; margin-top: 16px; overflow: hidden; }
-  #loadFill { height: 100%; background: #60a0d0; width: 0%; transition: width 0.3s; }
+  #loadBar { width:200px; height:3px; background:#1e1e22; border-radius:2px; margin-top:16px; overflow:hidden; }
+  #loadFill { height:100%; background:#60a0d0; width:0%; transition:width 0.3s; }
+  #modeRow { display:flex; gap:8px; margin-bottom:14px; }
+  .modeBtn {
+    flex:1; padding:8px; border-radius:8px; border:1px solid #1e1e22;
+    background:#111113; color:#666; font-size:11px; letter-spacing:0.05em;
+    cursor:pointer; text-transform:uppercase; text-align:center;
+  }
+  .modeBtn.active { border-color:#60a0d0; color:#60a0d0; background:#0e1a22; }
 </style>
 </head>
 <body>
@@ -88,39 +84,22 @@
 <h1>Guitar → Piano</h1>
 <p class="sub">เล่นกีต้าร์แล้วได้ยินเสียงเปียโนจริง</p>
 
-<div id="noteCircle">
-  <div id="noteName">—</div>
-  <div id="noteOctave"></div>
-  <div id="noteFreq"></div>
+<div id="modeRow">
+  <div class="modeBtn active" id="modeYin" onclick="setMode('yin')">MELODY<br><span style="font-size:9px;color:#444">YIN · แม่น</span></div>
+  <div class="modeBtn" id="modeChord" onclick="setMode('chord')">CHORD<br><span style="font-size:9px;color:#444">FFT · ทดลอง</span></div>
 </div>
 
+<div id="chordBox"></div>
 <div id="rmsBar"><div id="rmsFill"></div></div>
 
 <button id="startBtn" onclick="toggleAudio()">▶ เริ่มต้น</button>
 
 <div class="card">
-  <div class="row">
-    <span class="clabel">VOLUME OUT</span>
-    <span class="cval" id="volVal">70%</span>
-  </div>
-  <input type="range" id="volSlider" min="0" max="1" step="0.01" value="0.7" oninput="setVol(this.value)">
-
-  <div class="row">
-    <span class="clabel">INPUT BOOST</span>
-    <span class="cval" id="gainVal">6x</span>
-  </div>
-  <input type="range" id="gainSlider" min="1" max="20" step="0.5" value="6" oninput="setGain(this.value)">
-
-  <div class="row">
-    <span class="clabel">SENSITIVITY</span>
-    <span class="cval" id="sensVal">กลาง</span>
-  </div>
-  <input type="range" id="sensSlider" min="1" max="5" step="1" value="3" oninput="setSens(this.value)">
-
-  <div class="row" style="margin-top:6px">
-    <span class="clabel">STATUS</span>
-    <span class="cval" id="statusVal">ปิด</span>
-  </div>
+  <div class="row"><span class="clabel">VOLUME</span><span class="cval" id="volVal">70%</span></div>
+  <input type="range" min="0" max="1" step="0.01" value="0.7" oninput="setVol(this.value)">
+  <div class="row"><span class="clabel">INPUT BOOST</span><span class="cval" id="gainVal">6x</span></div>
+  <input type="range" min="1" max="20" step="0.5" value="6" oninput="setGain(this.value)">
+  <div class="row" style="margin-top:4px"><span class="clabel">STATUS</span><span class="cval" id="statusVal">ปิด</span></div>
 </div>
 
 <div id="history"></div>
@@ -128,10 +107,10 @@
 <div class="tips">
   <div class="label" style="margin-bottom:8px">Tips</div>
   <ul>
-    <li>ดูแถบสีฟ้าใต้วงกลม = ระดับสัญญาณ iRig</li>
+    <li><b>MELODY</b> = YIN แม่นกว่า เหมาะ single note</li>
+    <li><b>CHORD</b> = FFT จับหลายโน้ต แต่อาจมี noise</li>
+    <li>แถบสีฟ้า = ระดับสัญญาณ iRig</li>
     <li>ถ้าแถบไม่ขยับ → เพิ่ม Input Boost</li>
-    <li>ถ้าเสียงกระตุกถี่ → เพิ่ม Sensitivity</li>
-    <li>ใช้หูฟังเพื่อป้องกัน feedback</li>
   </ul>
 </div>
 
@@ -176,172 +155,230 @@ const SAMPLES = {
 const NOTE_NAMES = ["C","C#","D","D#","E","F","F#","G","G#","A","A#","B"];
 const FLAT_TO_SHARP = {Ab:"G#",Bb:"A#",Db:"C#",Eb:"D#",Gb:"F#"};
 
-let audioCtx=null, analyser=null, stream=null, raf=null, isActive=false;
-let volume=0.7, inputGain=6, lastFreq=-1, lastTrigger=0, noteHistory=[];
-let audioBuffers={}, midiMap=null, boostNode=null;
-// Sensitivity levels: rms threshold
-const SENS_LEVELS = [0.015, 0.008, 0.004, 0.002, 0.001];
-let sensLevel = 2; // index default = กลาง (0.004)
+let audioCtx=null, analyserTime=null, analyserFFT=null, stream=null;
+let raf=null, isActive=false, boostNode=null;
+let volume=0.7, inputGain=6;
+let audioBuffers={}, midiMap=null;
+let noteHistory=[], mode='yin';
+let activeNotes=new Map(); // midi -> {lastSeen, source}
+let lastTriggerMap=new Map();
 
-function noteNameToMidi(name) {
-  const m = name.match(/^([A-Ga-g][b#]?)(-?\d+)$/);
-  if (!m) return null;
-  let np = m[1]; const oct = parseInt(m[2]);
-  if (FLAT_TO_SHARP[np]) np = FLAT_TO_SHARP[np];
-  const idx = NOTE_NAMES.indexOf(np);
-  if (idx < 0) return null;
-  return (oct + 1) * 12 + idx;
+// ---- Preload ----
+async function preloadSamples() {
+  const fill=document.getElementById('loadFill');
+  const keys=Object.keys(SAMPLES); let loaded=0;
+  const tmp=new AudioContext();
+  for (const note of keys) {
+    const r=await fetch(SAMPLES[note]);
+    const a=await r.arrayBuffer();
+    audioBuffers[note]=await tmp.decodeAudioData(a);
+    loaded++; fill.style.width=(loaded/keys.length*100)+'%';
+  }
+  await tmp.close();
+  document.getElementById('loading').style.display='none';
 }
 
-async function preloadSamples() {
-  const fill = document.getElementById('loadFill');
-  const keys = Object.keys(SAMPLES);
-  let loaded = 0;
-  const tmpCtx = new AudioContext();
-  for (const note of keys) {
-    const resp = await fetch(SAMPLES[note]);
-    const arr = await resp.arrayBuffer();
-    audioBuffers[note] = await tmpCtx.decodeAudioData(arr);
-    loaded++;
-    fill.style.width = (loaded / keys.length * 100) + '%';
-  }
-  await tmpCtx.close();
-  document.getElementById('loading').style.display = 'none';
+function noteNameToMidi(name) {
+  const m=name.match(/^([A-Ga-g][b#]?)(-?\d+)$/);
+  if (!m) return null;
+  let np=m[1]; const oct=parseInt(m[2]);
+  if (FLAT_TO_SHARP[np]) np=FLAT_TO_SHARP[np];
+  const idx=NOTE_NAMES.indexOf(np);
+  return idx<0?null:(oct+1)*12+idx;
 }
 
 function buildMidiMap() {
-  const map = {};
+  const map={};
   for (const note of Object.keys(audioBuffers)) {
-    const midi = noteNameToMidi(note);
-    if (midi !== null) map[midi] = audioBuffers[note];
+    const midi=noteNameToMidi(note);
+    if (midi!==null) map[midi]=audioBuffers[note];
   }
   return map;
 }
 
-function getBufferForFreq(freq) {
-  if (!midiMap) midiMap = buildMidiMap();
-  const target = 69 + 12 * Math.log2(freq / 440);
+function getBufferForMidi(targetMidi) {
+  if (!midiMap) midiMap=buildMidiMap();
   let best=null, bestDist=999;
   for (const midi of Object.keys(midiMap)) {
-    const d = Math.abs(midi - target);
-    if (d < bestDist) { bestDist=d; best=parseInt(midi); }
+    const d=Math.abs(midi-targetMidi);
+    if (d<bestDist) { bestDist=d; best=parseInt(midi); }
   }
   if (best===null) return null;
-  return { buffer: midiMap[best], rate: Math.pow(2,(target-best)/12) };
+  return { buffer:midiMap[best], rate:Math.pow(2,(targetMidi-best)/12) };
 }
 
-function playNote(freq) {
+function playNoteByMidi(midi) {
   if (!audioCtx) return;
-  const res = getBufferForFreq(freq);
+  const res=getBufferForMidi(midi);
   if (!res) return;
-  const src = audioCtx.createBufferSource();
-  src.buffer = res.buffer;
-  src.playbackRate.value = res.rate;
-  const g = audioCtx.createGain();
-  g.gain.value = volume;
-  src.connect(g);
-  g.connect(audioCtx.destination);
+  const src=audioCtx.createBufferSource();
+  src.buffer=res.buffer; src.playbackRate.value=res.rate;
+  const g=audioCtx.createGain(); g.gain.value=volume;
+  src.connect(g); g.connect(audioCtx.destination);
   src.start();
-  g.gain.setValueAtTime(volume, audioCtx.currentTime + 1.5);
-  g.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 2.5);
-  src.stop(audioCtx.currentTime + 2.6);
+  g.gain.setValueAtTime(volume, audioCtx.currentTime+1.5);
+  g.gain.linearRampToValueAtTime(0, audioCtx.currentTime+2.5);
+  src.stop(audioCtx.currentTime+2.6);
 }
 
-// YIN-inspired: ใช้ autocorrelation + parabolic interpolation
-function detectPitch(buf, sr) {
-  const SIZE = buf.length;
-  const HALF = Math.floor(SIZE / 2);
+// ---- YIN Algorithm ----
+function yinDetect(buf, sr) {
+  const W=buf.length;
+  const threshold=0.15;
+  const diff=new Float32Array(W);
 
-  // RMS check
-  let rms = 0;
-  for (let i = 0; i < SIZE; i++) rms += buf[i]*buf[i];
-  rms = Math.sqrt(rms / SIZE);
-
-  // Update RMS bar
-  const pct = Math.min(rms * 500, 100);
-  document.getElementById('rmsFill').style.width = pct + '%';
-
-  const threshold = SENS_LEVELS[sensLevel];
-  if (rms < threshold) return -1;
-
-  // Autocorrelation
-  let best = -1, bestCorr = 0, lastCorr = 1;
-  for (let o = 20; o < HALF; o++) {
-    let c = 0;
-    for (let i = 0; i < HALF; i++) c += Math.abs(buf[i] - buf[i+o]);
-    c = 1 - c / HALF;
-    if (c > 0.88 && c > lastCorr) {
-      bestCorr = c;
-      best = o;
+  // Step 1: difference function
+  for (let tau=1; tau<W/2; tau++) {
+    let sum=0;
+    for (let i=0; i<W/2; i++) {
+      const d=buf[i]-buf[i+tau];
+      sum+=d*d;
     }
-    lastCorr = c;
+    diff[tau]=sum;
   }
 
-  if (bestCorr > 0.01 && best > 0) {
-    // Parabolic interpolation สำหรับความแม่นยำสูงขึ้น
-    const y1 = best > 0 ? (1 - (()=>{let c=0; for(let i=0;i<HALF;i++) c+=Math.abs(buf[i]-buf[i+best-1]); return c/HALF;})()) : bestCorr;
-    const y2 = bestCorr;
-    const y3 = best < HALF-1 ? (1 - (()=>{let c=0; for(let i=0;i<HALF;i++) c+=Math.abs(buf[i]-buf[i+best+1]); return c/HALF;})()) : bestCorr;
-    const refined = best + (y3 - y1) / (2 * (2*y2 - y1 - y3) + 0.0001);
-    return sr / refined;
+  // Step 2: cumulative mean normalized
+  const cmnd=new Float32Array(W);
+  cmnd[0]=1; let runSum=0;
+  for (let tau=1; tau<W/2; tau++) {
+    runSum+=diff[tau];
+    cmnd[tau]=runSum===0?0:diff[tau]*tau/runSum;
   }
-  return -1;
-}
 
-function freqToNote(freq) {
-  if (!freq||freq<60||freq>2000) return null;
-  const midi=12*Math.log2(freq/440)+69;
-  const r=Math.round(midi);
-  return { notePart:NOTE_NAMES[r%12], octave:Math.floor(r/12)-1, freq:Math.round(freq) };
-}
-
-function updateUI(note) {
-  const circle=document.getElementById('noteCircle');
-  const nameEl=document.getElementById('noteName');
-  const octEl=document.getElementById('noteOctave');
-  const freqEl=document.getElementById('noteFreq');
-  if (note) {
-    const hue=(NOTE_NAMES.indexOf(note.notePart)*30)%360;
-    const color=`hsl(${hue},70%,58%)`;
-    circle.style.borderColor=color;
-    circle.style.boxShadow=`0 0 36px hsl(${hue},70%,30%)`;
-    circle.style.background=`hsl(${hue},70%,8%)`;
-    nameEl.style.color=color;
-    nameEl.textContent=note.notePart;
-    octEl.textContent=note.octave;
-    freqEl.textContent=note.freq+' Hz';
-  } else {
-    circle.style.cssText='border-color:#222;box-shadow:none;background:#111113;width:180px;height:180px;border-radius:50%;border:3px solid #222;display:flex;flex-direction:column;align-items:center;justify-content:center;margin-bottom:24px;';
-    nameEl.style.color='#555'; nameEl.textContent='—';
-    octEl.textContent=''; freqEl.textContent='';
+  // Step 3: find first dip below threshold
+  let tau=-1;
+  for (let t=2; t<W/2; t++) {
+    if (cmnd[t]<threshold) {
+      while (t+1<W/2 && cmnd[t+1]<cmnd[t]) t++;
+      tau=t; break;
+    }
   }
+  if (tau<2) return -1;
+
+  // Step 4: parabolic interpolation
+  const x0=tau>0?tau-1:tau;
+  const x2=tau<W/2-1?tau+1:tau;
+  let betterTau;
+  if (x0===tau) betterTau=cmnd[tau]<=cmnd[x2]?tau:x2;
+  else if (x2===tau) betterTau=cmnd[tau]<=cmnd[x0]?tau:x0;
+  else {
+    const s0=cmnd[x0], s1=cmnd[tau], s2=cmnd[x2];
+    betterTau=tau+(s2-s0)/(2*(2*s1-s2-s0));
+  }
+
+  return sr/betterTau;
 }
 
-function addHistory(n) {
-  noteHistory.unshift(n);
-  if (noteHistory.length>8) noteHistory.pop();
-  document.getElementById('history').innerHTML=noteHistory.map((x,i)=>
-    `<div class="htag" style="opacity:${1-i*0.1}">${x}</div>`).join('');
+// ---- FFT Chord Detection ----
+function fftChordDetect(fftBuf, sr, fftSize) {
+  const binHz=sr/fftSize;
+  const notes=[];
+
+  // หา peaks ใน FFT
+  const minBin=Math.floor(60/binHz);   // 60Hz
+  const maxBin=Math.floor(1200/binHz); // 1200Hz
+
+  // normalize to dB
+  let maxVal=-Infinity;
+  for (let i=minBin;i<maxBin;i++) if (fftBuf[i]>maxVal) maxVal=fftBuf[i];
+  const threshold=maxVal-30; // เอาแค่ที่แรงกว่า -30dB จาก peak
+
+  // หา local peaks
+  const peaks=[];
+  for (let i=minBin+1; i<maxBin-1; i++) {
+    if (fftBuf[i]>fftBuf[i-1] && fftBuf[i]>fftBuf[i+1] && fftBuf[i]>threshold) {
+      const freq=i*binHz;
+      // parabolic interpolation
+      const refined=i+(fftBuf[i+1]-fftBuf[i-1])/(2*(2*fftBuf[i]-fftBuf[i-1]-fftBuf[i+1])+0.001);
+      peaks.push({ freq:refined*binHz, mag:fftBuf[i] });
+    }
+  }
+
+  // sort by magnitude
+  peaks.sort((a,b)=>b.mag-a.mag);
+
+  // กรอง harmonics ออก เหลือแค่ fundamental
+  const fundamentals=[];
+  for (const peak of peaks) {
+    if (fundamentals.length>=3) break;
+    // เช็คว่าเป็น harmonic ของ fundamental ที่มีอยู่แล้วไหม
+    let isHarmonic=false;
+    for (const f of fundamentals) {
+      for (let h=2; h<=6; h++) {
+        if (Math.abs(peak.freq - f.freq*h)/f.freq < 0.05) {
+          isHarmonic=true; break;
+        }
+      }
+      if (isHarmonic) break;
+    }
+    if (!isHarmonic && peak.freq>60) fundamentals.push(peak);
+  }
+
+  // แปลงเป็น MIDI
+  for (const f of fundamentals) {
+    const midi=Math.round(69+12*Math.log2(f.freq/440));
+    if (midi>=28 && midi<=84) notes.push(midi);
+  }
+
+  return [...new Set(notes)];
 }
 
+// ---- UI ----
+function updateChordUI(midis) {
+  const box=document.getElementById('chordBox');
+  if (!midis||midis.length===0) {
+    box.innerHTML='<div style="color:#333;font-size:13px">—</div>';
+    return;
+  }
+  box.innerHTML=midis.map(midi=>{
+    const name=NOTE_NAMES[midi%12];
+    const oct=Math.floor(midi/12)-1;
+    const hue=(NOTE_NAMES.indexOf(name)*30)%360;
+    return `<div class="noteChip" style="border-color:hsl(${hue},70%,40%);background:hsl(${hue},70%,8%);color:hsl(${hue},70%,65%)">
+      ${name}<div class="oct">${oct}</div>
+    </div>`;
+  }).join('');
+}
+
+function addHistory(label) {
+  noteHistory.unshift(label);
+  if (noteHistory.length>6) noteHistory.pop();
+  document.getElementById('history').innerHTML=
+    noteHistory.map((x,i)=>`<div class="htag" style="opacity:${1-i*0.12}">${x}</div>`).join('');
+}
+
+function setMode(m) {
+  mode=m;
+  document.getElementById('modeYin').className='modeBtn'+(m==='yin'?' active':'');
+  document.getElementById('modeChord').className='modeBtn'+(m==='chord'?' active':'');
+  updateChordUI([]);
+}
+
+// ---- Main Loop ----
 async function toggleAudio() {
   if (isActive) { stopAll(); return; }
   try {
     document.getElementById('statusVal').textContent='รอสิทธิ์...';
     stream=await navigator.mediaDevices.getUserMedia({
-      audio:{ echoCancellation:false, noiseSuppression:false, autoGainControl:false }
+      audio:{echoCancellation:false,noiseSuppression:false,autoGainControl:false}
     });
     audioCtx=new AudioContext({sampleRate:44100});
 
     boostNode=audioCtx.createGain();
     boostNode.gain.value=inputGain;
 
-    analyser=audioCtx.createAnalyser();
-    analyser.fftSize=4096;
+    // Time domain analyser (YIN)
+    analyserTime=audioCtx.createAnalyser();
+    analyserTime.fftSize=4096;
 
-    const source=audioCtx.createMediaStreamSource(stream);
-    source.connect(boostNode);
-    boostNode.connect(analyser);
+    // Freq domain analyser (FFT chord)
+    analyserFFT=audioCtx.createAnalyser();
+    analyserFFT.fftSize=8192;
+
+    const src=audioCtx.createMediaStreamSource(stream);
+    src.connect(boostNode);
+    boostNode.connect(analyserTime);
+    boostNode.connect(analyserFFT);
 
     isActive=true;
     document.getElementById('startBtn').textContent='■ หยุด';
@@ -349,27 +386,61 @@ async function toggleAudio() {
     document.getElementById('statusVal').textContent='● ฟังอยู่';
     document.getElementById('statusVal').className='cval green';
 
-    const buf=new Float32Array(analyser.fftSize);
+    const timeBuf=new Float32Array(analyserTime.fftSize);
+    const fftBuf=new Float32Array(analyserFFT.frequencyBinCount);
+    let lastMidis=[];
+
     function loop() {
-      analyser.getFloatTimeDomainData(buf);
-      const freq=detectPitch(buf, audioCtx.sampleRate);
+      // RMS
+      analyserTime.getFloatTimeDomainData(timeBuf);
+      let rms=0;
+      for (let i=0;i<timeBuf.length;i++) rms+=timeBuf[i]*timeBuf[i];
+      rms=Math.sqrt(rms/timeBuf.length);
+      document.getElementById('rmsFill').style.width=Math.min(rms*600,100)+'%';
+
       const now=performance.now();
-      if (freq>0) {
-        const note=freqToNote(freq);
-        if (note) {
-          updateUI(note);
-          const diff=Math.abs(freq-lastFreq)/(lastFreq||1);
-          // trigger เมื่อโน้ตเปลี่ยนหรือเงียบไปแล้ว
-          if (diff>0.04 || now-lastTrigger>350) {
-            playNote(freq);
-            lastFreq=freq; lastTrigger=now;
-            addHistory(note.notePart+note.octave);
+
+      if (mode==='yin') {
+        // YIN mode
+        const freq=yinDetect(timeBuf, audioCtx.sampleRate);
+        if (freq>60 && freq<2000) {
+          const midi=Math.round(69+12*Math.log2(freq/440));
+          updateChordUI([midi]);
+          const last=lastTriggerMap.get(midi)||0;
+          if (now-last>300) {
+            playNoteByMidi(midi);
+            lastTriggerMap.set(midi, now);
+            const name=NOTE_NAMES[midi%12]+(Math.floor(midi/12)-1);
+            addHistory(name);
           }
+        } else {
+          updateChordUI([]);
         }
       } else {
-        updateUI(null);
-        lastFreq=-1;
+        // Chord FFT mode
+        analyserFFT.getFloatFrequencyData(fftBuf);
+        const midis=fftChordDetect(fftBuf, audioCtx.sampleRate, analyserFFT.fftSize);
+
+        if (midis.length>0) {
+          updateChordUI(midis);
+          // เล่นเฉพาะโน้ตใหม่
+          for (const midi of midis) {
+            const last=lastTriggerMap.get(midi)||0;
+            if (now-last>400) {
+              playNoteByMidi(midi);
+              lastTriggerMap.set(midi, now);
+            }
+          }
+          const label=midis.map(m=>NOTE_NAMES[m%12]).join('+');
+          const lastLabel=lastMidis.map(m=>NOTE_NAMES[m%12]).join('+');
+          if (label!==lastLabel) addHistory(label);
+          lastMidis=midis;
+        } else {
+          updateChordUI([]);
+          lastMidis=[];
+        }
       }
+
       raf=requestAnimationFrame(loop);
     }
     loop();
@@ -383,31 +454,21 @@ function stopAll() {
   if (raf) cancelAnimationFrame(raf);
   if (stream) stream.getTracks().forEach(t=>t.stop());
   if (audioCtx) audioCtx.close();
-  audioCtx=null; stream=null; analyser=null; boostNode=null;
-  isActive=false; lastFreq=-1;
+  audioCtx=null; stream=null; boostNode=null;
+  isActive=false;
   document.getElementById('startBtn').textContent='▶ เริ่มต้น';
   document.getElementById('startBtn').className='';
   document.getElementById('statusVal').textContent='ปิด';
   document.getElementById('statusVal').className='cval';
   document.getElementById('rmsFill').style.width='0%';
-  updateUI(null);
+  updateChordUI([]);
 }
 
-function setVol(v) {
-  volume=parseFloat(v);
-  document.getElementById('volVal').textContent=Math.round(v*100)+'%';
-}
-
+function setVol(v) { volume=parseFloat(v); document.getElementById('volVal').textContent=Math.round(v*100)+'%'; }
 function setGain(v) {
   inputGain=parseFloat(v);
   document.getElementById('gainVal').textContent=v+'x';
   if (boostNode) boostNode.gain.value=inputGain;
-}
-
-const SENS_LABELS = ['ต่ำมาก','ต่ำ','กลาง','สูง','สูงมาก'];
-function setSens(v) {
-  sensLevel = parseInt(v) - 1;
-  document.getElementById('sensVal').textContent=SENS_LABELS[sensLevel];
 }
 
 preloadSamples();
