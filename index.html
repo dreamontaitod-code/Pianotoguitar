@@ -18,8 +18,6 @@
     -webkit-background-clip:text; -webkit-text-fill-color:transparent; margin-bottom:4px;
   }
   .sub { color:#555; font-style:italic; font-size:13px; margin-bottom:20px; }
-
-  /* Chord display */
   #chordBox {
     display:flex; gap:10px; justify-content:center; flex-wrap:wrap;
     min-height:80px; align-items:center; margin-bottom:16px;
@@ -28,21 +26,16 @@
   .noteChip {
     width:64px; height:64px; border-radius:50%;
     display:flex; flex-direction:column; align-items:center; justify-content:center;
-    border:2px solid #333; background:#111113;
-    transition:all 0.08s;
+    border:2px solid #333; background:#111113; transition:all 0.08s;
     font-size:22px; font-weight:300;
   }
   .noteChip .oct { font-size:11px; color:#666; margin-top:1px; }
-
-  /* RMS bar */
   #rmsBar { width:200px; height:3px; background:#1a1a1e; border-radius:2px; margin-bottom:16px; overflow:hidden; }
   #rmsFill { height:100%; background:#60a0d0; width:0%; transition:width 0.05s; }
-
   #startBtn {
-    padding:12px 36px; border-radius:40px;
-    border:1px solid #334455; background:#0e1a22;
-    color:#60a0d0; font-size:13px; letter-spacing:0.1em;
-    cursor:pointer; text-transform:uppercase; margin-bottom:20px;
+    padding:12px 36px; border-radius:40px; border:1px solid #334455; background:#0e1a22;
+    color:#60a0d0; font-size:13px; letter-spacing:0.1em; cursor:pointer;
+    text-transform:uppercase; margin-bottom:20px;
   }
   #startBtn.active { border-color:#553333; background:#1a0e0e; color:#e06060; }
   .card {
@@ -97,8 +90,13 @@
 <div class="card">
   <div class="row"><span class="clabel">VOLUME</span><span class="cval" id="volVal">70%</span></div>
   <input type="range" min="0" max="1" step="0.01" value="0.7" oninput="setVol(this.value)">
+
   <div class="row"><span class="clabel">INPUT BOOST</span><span class="cval" id="gainVal">6x</span></div>
   <input type="range" min="1" max="20" step="0.5" value="6" oninput="setGain(this.value)">
+
+  <div class="row"><span class="clabel">SUSTAIN</span><span class="cval" id="sustainVal">3.0s</span></div>
+  <input type="range" id="sustainSlider" min="1" max="8" step="0.5" value="3" oninput="setSustain(this.value)">
+
   <div class="row" style="margin-top:4px"><span class="clabel">STATUS</span><span class="cval" id="statusVal">ปิด</span></div>
 </div>
 
@@ -107,10 +105,10 @@
 <div class="tips">
   <div class="label" style="margin-bottom:8px">Tips</div>
   <ul>
-    <li><b>MELODY</b> = YIN แม่นกว่า เหมาะ single note</li>
-    <li><b>CHORD</b> = FFT จับหลายโน้ต แต่อาจมี noise</li>
+    <li>SUSTAIN ปรับความยาวเสียงได้</li>
+    <li>Ghost note ลด → เล่นโน้ตชัดๆ อย่าให้สายค้างดัง</li>
     <li>แถบสีฟ้า = ระดับสัญญาณ iRig</li>
-    <li>ถ้าแถบไม่ขยับ → เพิ่ม Input Boost</li>
+    <li>CHORD mode จับหลายโน้ตพร้อมกัน</li>
   </ul>
 </div>
 
@@ -157,13 +155,22 @@ const FLAT_TO_SHARP = {Ab:"G#",Bb:"A#",Db:"C#",Eb:"D#",Gb:"F#"};
 
 let audioCtx=null, analyserTime=null, analyserFFT=null, stream=null;
 let raf=null, isActive=false, boostNode=null;
-let volume=0.7, inputGain=6;
+let volume=0.7, inputGain=6, sustainTime=3.0;
 let audioBuffers={}, midiMap=null;
 let noteHistory=[], mode='yin';
-let activeNotes=new Map(); // midi -> {lastSeen, source}
 let lastTriggerMap=new Map();
 
-// ---- Preload ----
+// --- ป้องกัน ghost note ---
+// เก็บ midi ล่าสุดที่ trigger + confidence score
+let lastConfirmedMidi = -1;
+let lastConfirmedTime = 0;
+// ต้องเห็นโน้ตเดิม N ครั้งติดกันก่อน trigger
+let pendingMidi = -1;
+let pendingCount = 0;
+const CONFIRM_FRAMES = 3; // ต้องเห็น 3 frame ติดกัน
+const MIN_RETRIGGER_MS = 350; // ms ขั้นต่ำก่อน trigger ซ้ำ
+const GHOST_SEMITONE_THRESHOLD = 2; // โน้ตใหม่ต้องต่างจากเดิม >= 2 semitone
+
 async function preloadSamples() {
   const fill=document.getElementById('loadFill');
   const keys=Object.keys(SAMPLES); let loaded=0;
@@ -213,39 +220,34 @@ function playNoteByMidi(midi) {
   if (!res) return;
   const src=audioCtx.createBufferSource();
   src.buffer=res.buffer; src.playbackRate.value=res.rate;
-  const g=audioCtx.createGain(); g.gain.value=volume;
+  const g=audioCtx.createGain();
+  g.gain.value=volume;
   src.connect(g); g.connect(audioCtx.destination);
   src.start();
-  g.gain.setValueAtTime(volume, audioCtx.currentTime+1.5);
-  g.gain.linearRampToValueAtTime(0, audioCtx.currentTime+2.5);
-  src.stop(audioCtx.currentTime+2.6);
+  // Sustain แบบ echo tail ยาว
+  const holdTime=sustainTime*0.6;
+  const fadeTime=sustainTime*0.4;
+  g.gain.setValueAtTime(volume, audioCtx.currentTime+holdTime);
+  g.gain.linearRampToValueAtTime(0, audioCtx.currentTime+holdTime+fadeTime);
+  src.stop(audioCtx.currentTime+holdTime+fadeTime+0.1);
 }
 
-// ---- YIN Algorithm ----
+// ---- YIN ----
 function yinDetect(buf, sr) {
   const W=buf.length;
   const threshold=0.15;
   const diff=new Float32Array(W);
-
-  // Step 1: difference function
   for (let tau=1; tau<W/2; tau++) {
     let sum=0;
-    for (let i=0; i<W/2; i++) {
-      const d=buf[i]-buf[i+tau];
-      sum+=d*d;
-    }
+    for (let i=0; i<W/2; i++) { const d=buf[i]-buf[i+tau]; sum+=d*d; }
     diff[tau]=sum;
   }
-
-  // Step 2: cumulative mean normalized
   const cmnd=new Float32Array(W);
   cmnd[0]=1; let runSum=0;
   for (let tau=1; tau<W/2; tau++) {
     runSum+=diff[tau];
     cmnd[tau]=runSum===0?0:diff[tau]*tau/runSum;
   }
-
-  // Step 3: find first dip below threshold
   let tau=-1;
   for (let t=2; t<W/2; t++) {
     if (cmnd[t]<threshold) {
@@ -254,73 +256,78 @@ function yinDetect(buf, sr) {
     }
   }
   if (tau<2) return -1;
-
-  // Step 4: parabolic interpolation
   const x0=tau>0?tau-1:tau;
   const x2=tau<W/2-1?tau+1:tau;
   let betterTau;
   if (x0===tau) betterTau=cmnd[tau]<=cmnd[x2]?tau:x2;
   else if (x2===tau) betterTau=cmnd[tau]<=cmnd[x0]?tau:x0;
   else {
-    const s0=cmnd[x0], s1=cmnd[tau], s2=cmnd[x2];
+    const s0=cmnd[x0],s1=cmnd[tau],s2=cmnd[x2];
     betterTau=tau+(s2-s0)/(2*(2*s1-s2-s0));
   }
-
   return sr/betterTau;
 }
 
-// ---- FFT Chord Detection ----
+// ---- FFT Chord ----
 function fftChordDetect(fftBuf, sr, fftSize) {
   const binHz=sr/fftSize;
-  const notes=[];
-
-  // หา peaks ใน FFT
-  const minBin=Math.floor(60/binHz);   // 60Hz
-  const maxBin=Math.floor(1200/binHz); // 1200Hz
-
-  // normalize to dB
+  const minBin=Math.floor(60/binHz);
+  const maxBin=Math.floor(1200/binHz);
   let maxVal=-Infinity;
   for (let i=minBin;i<maxBin;i++) if (fftBuf[i]>maxVal) maxVal=fftBuf[i];
-  const threshold=maxVal-30; // เอาแค่ที่แรงกว่า -30dB จาก peak
-
-  // หา local peaks
+  const threshold=maxVal-28;
   const peaks=[];
   for (let i=minBin+1; i<maxBin-1; i++) {
-    if (fftBuf[i]>fftBuf[i-1] && fftBuf[i]>fftBuf[i+1] && fftBuf[i]>threshold) {
-      const freq=i*binHz;
-      // parabolic interpolation
+    if (fftBuf[i]>fftBuf[i-1]&&fftBuf[i]>fftBuf[i+1]&&fftBuf[i]>threshold) {
       const refined=i+(fftBuf[i+1]-fftBuf[i-1])/(2*(2*fftBuf[i]-fftBuf[i-1]-fftBuf[i+1])+0.001);
-      peaks.push({ freq:refined*binHz, mag:fftBuf[i] });
+      peaks.push({freq:refined*binHz, mag:fftBuf[i]});
     }
   }
-
-  // sort by magnitude
   peaks.sort((a,b)=>b.mag-a.mag);
-
-  // กรอง harmonics ออก เหลือแค่ fundamental
   const fundamentals=[];
   for (const peak of peaks) {
     if (fundamentals.length>=3) break;
-    // เช็คว่าเป็น harmonic ของ fundamental ที่มีอยู่แล้วไหม
     let isHarmonic=false;
     for (const f of fundamentals) {
-      for (let h=2; h<=6; h++) {
-        if (Math.abs(peak.freq - f.freq*h)/f.freq < 0.05) {
-          isHarmonic=true; break;
-        }
+      for (let h=2;h<=6;h++) {
+        if (Math.abs(peak.freq-f.freq*h)/f.freq<0.05) { isHarmonic=true; break; }
       }
       if (isHarmonic) break;
     }
-    if (!isHarmonic && peak.freq>60) fundamentals.push(peak);
+    if (!isHarmonic&&peak.freq>60) fundamentals.push(peak);
   }
-
-  // แปลงเป็น MIDI
+  const notes=[];
   for (const f of fundamentals) {
     const midi=Math.round(69+12*Math.log2(f.freq/440));
-    if (midi>=28 && midi<=84) notes.push(midi);
+    if (midi>=28&&midi<=84) notes.push(midi);
+  }
+  return [...new Set(notes)];
+}
+
+// ---- Ghost note filter ----
+function shouldTrigger(midi, now) {
+  // ต้องเห็น midi เดิม CONFIRM_FRAMES ครั้งติดกัน
+  if (midi === pendingMidi) {
+    pendingCount++;
+  } else {
+    pendingMidi = midi;
+    pendingCount = 1;
+  }
+  if (pendingCount < CONFIRM_FRAMES) return false;
+
+  // ถ้าเป็นโน้ตเดิม ต้องรอ retrigger time
+  if (midi === lastConfirmedMidi) {
+    if (now - lastConfirmedTime < MIN_RETRIGGER_MS) return false;
   }
 
-  return [...new Set(notes)];
+  // ถ้าเป็นโน้ตใหม่ ต้องต่างกัน >= threshold semitone
+  if (lastConfirmedMidi >= 0 && midi !== lastConfirmedMidi) {
+    const semDiff = Math.abs(midi - lastConfirmedMidi);
+    // โน้ตที่ต่างกันน้อยและเกิดเร็วมาก = likely ghost
+    if (semDiff < GHOST_SEMITONE_THRESHOLD && now - lastConfirmedTime < 200) return false;
+  }
+
+  return true;
 }
 
 // ---- UI ----
@@ -335,8 +342,7 @@ function updateChordUI(midis) {
     const oct=Math.floor(midi/12)-1;
     const hue=(NOTE_NAMES.indexOf(name)*30)%360;
     return `<div class="noteChip" style="border-color:hsl(${hue},70%,40%);background:hsl(${hue},70%,8%);color:hsl(${hue},70%,65%)">
-      ${name}<div class="oct">${oct}</div>
-    </div>`;
+      ${name}<div class="oct">${oct}</div></div>`;
   }).join('');
 }
 
@@ -351,10 +357,9 @@ function setMode(m) {
   mode=m;
   document.getElementById('modeYin').className='modeBtn'+(m==='yin'?' active':'');
   document.getElementById('modeChord').className='modeBtn'+(m==='chord'?' active':'');
-  updateChordUI([]);
+  updateChordUI([]); pendingMidi=-1; pendingCount=0; lastConfirmedMidi=-1;
 }
 
-// ---- Main Loop ----
 async function toggleAudio() {
   if (isActive) { stopAll(); return; }
   try {
@@ -363,18 +368,12 @@ async function toggleAudio() {
       audio:{echoCancellation:false,noiseSuppression:false,autoGainControl:false}
     });
     audioCtx=new AudioContext({sampleRate:44100});
-
     boostNode=audioCtx.createGain();
     boostNode.gain.value=inputGain;
-
-    // Time domain analyser (YIN)
     analyserTime=audioCtx.createAnalyser();
     analyserTime.fftSize=4096;
-
-    // Freq domain analyser (FFT chord)
     analyserFFT=audioCtx.createAnalyser();
     analyserFFT.fftSize=8192;
-
     const src=audioCtx.createMediaStreamSource(stream);
     src.connect(boostNode);
     boostNode.connect(analyserTime);
@@ -391,7 +390,6 @@ async function toggleAudio() {
     let lastMidis=[];
 
     function loop() {
-      // RMS
       analyserTime.getFloatTimeDomainData(timeBuf);
       let rms=0;
       for (let i=0;i<timeBuf.length;i++) rms+=timeBuf[i]*timeBuf[i];
@@ -401,29 +399,25 @@ async function toggleAudio() {
       const now=performance.now();
 
       if (mode==='yin') {
-        // YIN mode
         const freq=yinDetect(timeBuf, audioCtx.sampleRate);
-        if (freq>60 && freq<2000) {
+        if (freq>60&&freq<2000) {
           const midi=Math.round(69+12*Math.log2(freq/440));
           updateChordUI([midi]);
-          const last=lastTriggerMap.get(midi)||0;
-          if (now-last>300) {
+          if (shouldTrigger(midi, now)) {
             playNoteByMidi(midi);
-            lastTriggerMap.set(midi, now);
-            const name=NOTE_NAMES[midi%12]+(Math.floor(midi/12)-1);
-            addHistory(name);
+            lastConfirmedMidi=midi;
+            lastConfirmedTime=now;
+            addHistory(NOTE_NAMES[midi%12]+(Math.floor(midi/12)-1));
           }
         } else {
           updateChordUI([]);
+          pendingMidi=-1; pendingCount=0;
         }
       } else {
-        // Chord FFT mode
         analyserFFT.getFloatFrequencyData(fftBuf);
         const midis=fftChordDetect(fftBuf, audioCtx.sampleRate, analyserFFT.fftSize);
-
         if (midis.length>0) {
           updateChordUI(midis);
-          // เล่นเฉพาะโน้ตใหม่
           for (const midi of midis) {
             const last=lastTriggerMap.get(midi)||0;
             if (now-last>400) {
@@ -440,7 +434,6 @@ async function toggleAudio() {
           lastMidis=[];
         }
       }
-
       raf=requestAnimationFrame(loop);
     }
     loop();
@@ -455,7 +448,7 @@ function stopAll() {
   if (stream) stream.getTracks().forEach(t=>t.stop());
   if (audioCtx) audioCtx.close();
   audioCtx=null; stream=null; boostNode=null;
-  isActive=false;
+  isActive=false; pendingMidi=-1; pendingCount=0; lastConfirmedMidi=-1;
   document.getElementById('startBtn').textContent='▶ เริ่มต้น';
   document.getElementById('startBtn').className='';
   document.getElementById('statusVal').textContent='ปิด';
@@ -466,9 +459,11 @@ function stopAll() {
 
 function setVol(v) { volume=parseFloat(v); document.getElementById('volVal').textContent=Math.round(v*100)+'%'; }
 function setGain(v) {
-  inputGain=parseFloat(v);
-  document.getElementById('gainVal').textContent=v+'x';
+  inputGain=parseFloat(v); document.getElementById('gainVal').textContent=v+'x';
   if (boostNode) boostNode.gain.value=inputGain;
+}
+function setSustain(v) {
+  sustainTime=parseFloat(v); document.getElementById('sustainVal').textContent=v+'s';
 }
 
 preloadSamples();
